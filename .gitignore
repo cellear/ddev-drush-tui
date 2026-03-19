@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Local development artifacts (not part of the project)
+XDEBUG-SAVED/
+XDEBUG-TRASHED/
+.claude/
+
+# Drupal CMS test site (local test harness, not project source)
+drupal-cms/
+cms-2.0.4.zip
+
+# Go build output
+/ddev-drush-tui
+bin/
+dist/
+*.exe
+
+# Go module cache
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
