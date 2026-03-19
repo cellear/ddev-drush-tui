@@ -41,9 +41,10 @@
 
 ## Current State
 
-**Repository:** `/Users/lukemccormick/Sites/DDEV/ddev-drush-tli/`
-**Git branch:** `main`, 1 commit (initial bootstrap)
-**Remote:** Not yet set. User will push to `github.com/cellear/ddev-drush-tui` when token is refreshed.
+**Repository:** `/Users/lukemccormick/Sites/DDEV/ddev-drush-tui/` (canonical path after directory rename)
+**Symlink note:** During bootstrap the directory was `ddev-drush-tli`; it was renamed to `ddev-drush-tui`. A symlink `ddev-drush-tli → ddev-drush-tui` exists temporarily and can be removed after the current Claude Code session ends.
+**Git branch:** `main`, 2 commits
+**Remote:** `https://github.com/cellear/ddev-drush-tui` (pushed)
 
 **Directory structure:**
 ```
