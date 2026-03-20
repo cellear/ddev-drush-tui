@@ -43,7 +43,7 @@
 **Scope:** `internal/ddev/context.go`
 
 - Define `Context` struct: `{ ProjectName string, AppRoot string }`
-- Run `ddev describe --json` and parse the project name from the output
+- Run `ddev describe --json-output` and parse the project name from the output
 - Run `ddev drush version --format=string` to verify drush is available (exit 0)
 - If not in a DDEV project: print `"Error: not in a DDEV project directory"` and exit 1
 - If drush not available: print `"Error: drush is not available in this DDEV project"` and exit 1
@@ -56,7 +56,7 @@ Wire to `main.go`: call `ddev.Detect()`, print project name, then exit.
 - [ ] Running from a non-DDEV directory: prints clear error and exits 1
 - [ ] Running from a DDEV project without drush: prints clear error and exits 1
 
-**Note:** `ddev describe --json` output includes a `name` field with the project name. Check the actual JSON by running it against the test site.
+**Note:** `ddev describe --json-output` output includes a `name` field with the project name. Check the actual JSON by running it against the test site.
 
 ---
 

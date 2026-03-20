@@ -57,7 +57,7 @@ Nothing functional yet. Just a compiling Go module.
 **Goal:** Know which DDEV project we're in, and whether drush is available.
 
 `internal/ddev/context.go`:
-- Run `ddev describe --json` to get project name
+- Run `ddev describe --json-output` to get project name
 - Verify `ddev drush version` exits 0
 - Return a `Context` struct: `{ProjectName string, AppRoot string}`
 - Exit with clear error if not in a DDEV project or drush unavailable
