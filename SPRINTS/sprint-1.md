@@ -8,7 +8,7 @@
 
 ## Stories
 
-### S1-1 · Go module + directory structure · [ ]
+### S1-1 · Go module + directory structure · [x]
 
 **Owner:** Codex (alt: Haiku)
 
@@ -30,13 +30,13 @@
 - All files are stubs that compile. `main.go` prints "ddev-drush-tui" and exits.
 
 **Acceptance criteria:**
-- [ ] `go build ./...` succeeds with zero errors
-- [ ] `go run ./cmd/ddev-drush-tui` prints something and exits cleanly
-- [ ] `go.mod` shows module `github.com/cellear/ddev-drush-tui`
+- [x] `go build ./...` succeeds with zero errors
+- [x] `go run ./cmd/ddev-drush-tui` prints something and exits cleanly
+- [x] `go.mod` shows module `github.com/cellear/ddev-drush-tui`
 
 ---
 
-### S1-2 · DDEV context detection · [ ]
+### S1-2 · DDEV context detection · [x]
 
 **Owner:** Codex (alt: Gemini CLI)
 
@@ -52,15 +52,15 @@
 Wire to `main.go`: call `ddev.Detect()`, print project name, then exit.
 
 **Acceptance criteria:**
-- [ ] Running from `drupal-cms/` directory: prints `"Project: drupal-cms"` (or similar)
-- [ ] Running from a non-DDEV directory: prints clear error and exits 1
-- [ ] Running from a DDEV project without drush: prints clear error and exits 1
+- [x] Running from `drupal-cms/` directory: prints `"Project: drupal-cms"` (or similar)
+- [x] Running from a non-DDEV directory: prints clear error and exits 1
+- [x] Running from a DDEV project without drush: prints clear error and exits 1
 
 **Note:** `ddev describe --json-output` output includes a `name` field with the project name. Check the actual JSON by running it against the test site.
 
 ---
 
-### S1-3 · Drush command discovery · [ ]
+### S1-3 · Drush command discovery · [x]
 
 **Owner:** Gemini CLI (alt: Sonnet)
 
@@ -90,11 +90,11 @@ type Command struct {
 ```
 
 **Acceptance criteria:**
-- [ ] `discovery.ListCommands()` returns populated groups
-- [ ] `cache:*` commands appear in the `cache` namespace group
-- [ ] Commands are sorted alphabetically within each group
-- [ ] Groups are sorted alphabetically by namespace
-- [ ] `_complete`, `help`, `list` — internal commands — are filtered out
+- [x] `discovery.ListCommands()` returns populated groups
+- [x] `cache:*` commands appear in the `cache` namespace group
+- [x] Commands are sorted alphabetically within each group
+- [x] Groups are sorted alphabetically by namespace
+- [x] `_complete`, `help`, `list` — internal commands — are filtered out
 
 **Filtering:** Exclude commands whose name starts with `_` and the built-in `help` and `list` commands. These are Symfony Console internals, not Drush commands.
 

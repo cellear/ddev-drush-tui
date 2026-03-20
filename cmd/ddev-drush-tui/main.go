@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/cellear/ddev-drush-tui/internal/ddev"
+	"github.com/cellear/ddev-drush-tui/internal/drush"
 )
 
 func main() {
@@ -23,4 +24,13 @@ func main() {
 	}
 
 	fmt.Printf("Project: %s\n", context.ProjectName)
+
+	_, err = drush.ListCommands()
+	if err != nil {
+		fmt.Printf("Error listing commands: %v\n", err)
+		os.Exit(1)
+	}
+
+	// S1-4 will wire the TUI here.
+	fmt.Println("Drush commands discovered. Ready for TUI.")
 }
