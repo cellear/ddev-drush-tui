@@ -8,7 +8,7 @@
 
 ## Stories
 
-### S2-1 · Parameter discovery (help parsing) · [ ]
+### S2-1 · Parameter discovery (help parsing) · [x]
 
 **Owner:** Codex (alt: Sonnet)
 
@@ -77,7 +77,7 @@ config, alias-path, include, phpunit-path, generate-md, symfony
 
 ---
 
-### S2-2 · Wire command selection to help lookup · [ ]
+### S2-2 · Wire command selection to help lookup · [x]
 
 **Owner:** Codex (alt: Sonnet)
 
@@ -97,7 +97,7 @@ This is a small wiring story. When the user selects a command (Enter) in the com
 
 ---
 
-### S2-3 · Parameter form rendering · [ ]
+### S2-3 · Parameter form rendering · [x]
 
 **Owner:** Cursor Composer (alt: Haiku)
 
@@ -138,7 +138,7 @@ Replace the `ParamsView` placeholder with a dynamic form:
 
 ---
 
-### S2-4 · Sprint 2 demo script · [ ]
+### S2-4 · Sprint 2 demo script · [x]
 
 **Owner:** whoever finishes S2-3 (or the human)
 

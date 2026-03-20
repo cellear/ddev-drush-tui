@@ -9,35 +9,49 @@ import (
 
 // App is the tview application with the three-pane layout.
 type App struct {
-	app       *tview.Application
-	context   *ddev.Context
-	commands  []drush.NamespaceGroup
-	cmdList   *CommandList
-	params    *ParamsView
-	output    *OutputView
-	header    *tview.TextView
-	grid      *tview.Grid
+	app      *tview.Application
+	context  *ddev.Context
+	commands []drush.NamespaceGroup
+	cmdList  *CommandList
+	params   *ParamsView
+	output   *OutputView
+	header   *tview.TextView
+	grid     *tview.Grid
 }
 
-// NewApp creates the TUI application with header, command list, params placeholder, and output placeholder.
+// NewApp creates the TUI application with header, command list, params form, and output pane.
 func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
+	app := tview.NewApplication()
+
 	header := tview.NewTextView()
 	header.SetDynamicColors(false)
 	header.SetText(" ddev-drush-tui | project: " + ctx.ProjectName)
 
-	// Command list with no-op callback for now (S2 will wire to params)
-	cmdList := NewCommandList(commands, func(cmd *drush.Command) {
-		// S2: load params for cmd
-		_ = cmd
+	output := NewOutputView()
+
+	// Build params and command list. Both reference each other, so we
+	// create params first with a nil cancel callback, then wire it up.
+	params := NewParamsView(nil)
+
+	var cmdList *CommandList
+	cmdList = NewCommandList(commands, func(cmd *drush.Command) {
+		help, err := drush.Help(cmd.Name)
+		if err != nil {
+			params.ShowError(err)
+			return
+		}
+		params.ShowParams(help)
+		app.SetFocus(params.form)
 	})
 
-	params := NewParamsView()
-	output := NewOutputView()
+	params.onCancel = func() {
+		app.SetFocus(cmdList.List)
+	}
 
 	// Top row: commands (60%) and params (40%)
 	panels := tview.NewFlex().
-		AddItem(cmdList, 0, 6, true).  // 60% = 6/10
-		AddItem(params, 0, 4, false)   // 40% = 4/10
+		AddItem(cmdList, 0, 6, true).
+		AddItem(params.layout, 0, 4, false)
 
 	// Grid: header, panels, output
 	grid := tview.NewGrid().
@@ -46,8 +60,6 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 		AddItem(header, 0, 0, 1, 1, 0, 0, false).
 		AddItem(panels, 1, 0, 1, 1, 0, 0, true).
 		AddItem(output, 2, 0, 1, 1, 0, 0, false)
-
-	app := tview.NewApplication()
 
 	a := &App{
 		app:      app,
@@ -63,13 +75,27 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 	app.SetRoot(grid, true)
 	app.SetFocus(cmdList)
 
-	// q quits when command list is focused
+	// Global key handling: q quits from command list, Tab cycles focus, Esc returns to command list.
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == 'q' {
-			if app.GetFocus() == cmdList {
+		switch event.Key() {
+		case tcell.KeyRune:
+			if event.Rune() == 'q' && app.GetFocus() == cmdList.List {
 				app.Stop()
 				return nil
 			}
+		case tcell.KeyTab:
+			// Toggle focus between command list and params form.
+			focused := app.GetFocus()
+			if focused == cmdList.List {
+				app.SetFocus(params.form)
+			} else {
+				app.SetFocus(cmdList.List)
+			}
+			return nil
+		case tcell.KeyEscape:
+			// Esc always returns to command list.
+			app.SetFocus(cmdList.List)
+			return nil
 		}
 		return event
 	})
