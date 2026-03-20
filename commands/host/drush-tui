@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#ddev-generated
+## Description: Launch the Drush TUI
+## Usage: drush-tui
+## Example: ddev drush-tui
+
+exec ddev-drush-tui

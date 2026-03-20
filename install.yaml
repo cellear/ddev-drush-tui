@@ -1,0 +1,3 @@
+name: ddev-drush-tui
+project_files:
+  - commands/host/drush-tui
