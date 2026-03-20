@@ -1,1 +1,0 @@
-acceptance-test-s1.sh
