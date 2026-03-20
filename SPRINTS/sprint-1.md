@@ -230,6 +230,16 @@ clean:
 
 ---
 
+## Acceptance
+
+**Status:** Accepted
+**Date:** 2026-03-19
+**Reviewed by:** Luke McCormick
+
+Demo checkpoint passed: TUI launches from `drupal-cms/`, shows grouped Drush commands, arrow key navigation works, `q` exits. DDEV add-on installs and `ddev drush-tui` launches the TUI.
+
+---
+
 ## Deferred to Later Sprints
 
 - Parameter form (Sprint 2)
