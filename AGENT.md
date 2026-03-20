@@ -255,19 +255,18 @@ Agents should NOT attempt these during PoC development.
 
 # Development Process
 
-This project uses the **agent handoff protocol**. See `.agent-handoff/AGENT.md` for the full protocol.
-
-Key directories:
+## Key Directories
 
 - `HANDOFF/` — session journals, chronological
 - `DOC/` — persistent reference docs
 - `SPRINTS/` — sprint plans with user stories
 - `LEARNINGS/` — end-of-sprint knowledge capture
 
-Agents must read recent HANDOFF/ files before starting work.
-Agents must write a handoff document before ending a session.
+Sprint plans live in `SPRINTS/sprint-N.md` with user stories, acceptance criteria, and `[done]` tags.
 
-**Commit attribution:** Every commit made by an AI assistant MUST include a `Co-Authored-By` trailer identifying the model. Examples:
+## Commit Attribution
+
+Every commit made by an AI assistant MUST include a `Co-Authored-By` trailer identifying the model. Examples:
 
 ```
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
@@ -277,17 +276,63 @@ Co-Authored-By: Gemini CLI <noreply@google.com>
 Co-Authored-By: Cursor Composer <noreply@cursor.com>
 ```
 
-Sprint plans live in `SPRINTS/sprint-N.md` with user stories, acceptance criteria, and `[done]` tags.
+## Starting a Session
+
+1. Read this file (AGENT.md) completely
+2. Read recent files in `HANDOFF/` (newest first)
+3. Read relevant files in `DOC/`
+4. Summarize current project state for the user
+5. Ask what to work on next
+
+## Ending a Session (Handoff Protocol)
+
+Create a handoff document before the session ends.
+
+**File:** `HANDOFF/handoff-[yyyy-mm-dd]-[task]-[author].md`
+
+No spaces in filenames. Examples:
+- `handoff-2026-01-20-auth-bug-claude.md`
+- `handoff-2026-01-21-api-refactor-gemini.md`
+
+**Include:**
+- What was attempted and the outcome
+- What worked, what didn't
+- Current state and blockers
+- Open questions
+- Files created or modified
+- References to `DOC/` files and prior handoffs
+- **Next-assistant prompt** (see below)
+
+## Next-Assistant Prompt
+
+Every handoff MUST end with a section called `## Prompt for Next Assistant`. This is a ready-to-paste prompt the human can give to the next AI assistant to start their session. It should:
+
+1. State which sprint story to work on next (e.g., "You are working on S1-4")
+2. List the files to read first (AGENT.md, the sprint plan, relevant DOC/ files, the previous handoff)
+3. Summarize what's already done and what's expected
+4. Remind the assistant of key constraints (e.g., "read DOC/drush-discovery.md before implementing")
+5. Remind the assistant to sign commits with `Co-Authored-By`
+
+After writing the handoff file, **tell the human directly:**
+- The exact prompt to paste (in a code block)
+- Which assistant is scheduled to receive it (from the sprint plan's Owner field)
+- What story it covers
+
+## Updating DOC Files
+
+When you learn something persistent about the project — architecture decisions, deploy steps, conventions, known issues — update or create a relevant file in `DOC/`. Prefer updating existing files over creating new ones.
+
+When updating a DOC file, add or update a `Last updated: yyyy-mm-dd by [author]` line at the bottom.
 
 ---
 
 # Tool-Specific Instructions
 
+Each tool has a pointer file in the repo root that says "Read and follow AGENT.md":
+
 | Tool | File |
 |------|------|
-| Claude Code | `.agent-handoff/CLAUDE.md` |
-| Codex | `.agent-handoff/AGENTS.md` |
-| Cursor | `.agent-handoff/.cursorrules` |
+| Claude Code | `CLAUDE.md` |
+| Codex | `AGENTS.md` |
+| Cursor | `.cursorrules` |
 | Gemini CLI | `.gemini/styleguide.md` |
-
-All point to this file (AGENT.md) as the source of truth.
