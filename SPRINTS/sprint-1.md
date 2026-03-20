@@ -100,7 +100,7 @@ type Command struct {
 
 ---
 
-### S1-4 · Minimal TUI with command list · [ ]
+### S1-4 · Minimal TUI with command list · [x]
 
 **Owner:** Cursor Composer (alt: Haiku)
 
@@ -146,12 +146,12 @@ Layout:
 **Wire in `main.go`:** Call `ddev.Detect()`, call `drush.ListCommands()`, call `tui.NewApp(context, commands).Run()`.
 
 **Acceptance criteria:**
-- [ ] TUI launches from `drupal-cms/` directory showing Drush commands grouped by namespace
-- [ ] Namespace headers are visually distinct (styled, not selectable)
-- [ ] Arrow key navigation moves between commands
-- [ ] Selecting a command doesn't crash (callback called, no-op for now)
-- [ ] `q` exits cleanly
-- [ ] Header shows correct project name
+- [x] TUI launches from `drupal-cms/` directory showing Drush commands grouped by namespace
+- [x] Namespace headers are visually distinct (styled, not selectable)
+- [x] Arrow key navigation moves between commands
+- [x] Selecting a command doesn't crash (callback called, no-op for now)
+- [x] `q` exits cleanly
+- [x] Header shows correct project name
 
 **Sprint 1 Demo checkpoint — do not proceed to Sprint 2 until this passes:**
 1. `cd drupal-cms && ddev drush-tui` (or `go run ../cmd/ddev-drush-tui`)
