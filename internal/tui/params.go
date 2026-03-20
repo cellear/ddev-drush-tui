@@ -19,6 +19,11 @@ type ParamsView struct {
 
 	// onCancel is called when the user presses Cancel or Esc.
 	onCancel func()
+	// onRun is called with the command name, positional args, and option flags.
+	onRun func(command string, args []string, opts []string)
+
+	// currentHelp tracks which command is displayed so we can read form values.
+	currentHelp *drush.CommandHelp
 }
 
 // NewParamsView creates the params pane with placeholder text.
@@ -60,6 +65,8 @@ func (pv *ParamsView) ShowError(err error) {
 
 // ShowParams builds a dynamic form from the command's help data.
 func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
+	pv.currentHelp = help
+
 	// Header: command name, description, aliases.
 	aliasText := ""
 	if len(help.Aliases) > 0 {
@@ -100,7 +107,11 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 
 	// Buttons.
 	pv.form.AddButton("Run", func() {
-		// S3 will wire this to drush.Execute().
+		if pv.onRun == nil || pv.currentHelp == nil {
+			return
+		}
+		args, opts := pv.collectValues()
+		pv.onRun(pv.currentHelp.Name, args, opts)
 	})
 	pv.form.AddButton("Cancel", func() {
 		pv.ShowPlaceholder()
@@ -108,6 +119,58 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 			pv.onCancel()
 		}
 	})
+}
+
+// collectValues reads the current form fields and returns positional args and option flags.
+func (pv *ParamsView) collectValues() (args []string, opts []string) {
+	help := pv.currentHelp
+	if help == nil {
+		return
+	}
+
+	formIdx := 0
+
+	// Arguments come first in the form (same order as ShowParams).
+	argNames := sortedKeys(help.Arguments)
+	for _, name := range argNames {
+		item := pv.form.GetFormItemByLabel(name)
+		if item == nil {
+			// Try with required prefix.
+			item = pv.form.GetFormItemByLabel("* " + name)
+		}
+		if input, ok := item.(*tview.InputField); ok {
+			val := input.GetText()
+			if val != "" {
+				args = append(args, val)
+			}
+		}
+		formIdx++
+	}
+
+	// Options come after arguments.
+	optNames := sortedKeys(help.Options)
+	for _, name := range optNames {
+		opt := help.Options[name]
+		if opt.AcceptValue == "0" {
+			// Boolean flag — checkbox.
+			item := pv.form.GetFormItemByLabel(name)
+			if cb, ok := item.(*tview.Checkbox); ok && cb.IsChecked() {
+				opts = append(opts, "--"+name)
+			}
+		} else {
+			// Value option — input field.
+			item := pv.form.GetFormItemByLabel(name)
+			if input, ok := item.(*tview.InputField); ok {
+				val := input.GetText()
+				if val != "" {
+					opts = append(opts, "--"+name+"="+val)
+				}
+			}
+		}
+		formIdx++
+	}
+
+	return
 }
 
 // sortedKeys returns the keys of a map sorted alphabetically.

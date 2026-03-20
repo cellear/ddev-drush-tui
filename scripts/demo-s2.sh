@@ -34,6 +34,8 @@ echo "5. Esc returns from form to command list"
 echo "6. Cancel button returns to command list"
 echo "7. q exits from command list"
 echo "----------------------------------------------------"
+echo ""
+read -rp "Press Enter to launch the TUI..."
 
 # Run the program from the test site directory.
 cd "$TEST_SITE"

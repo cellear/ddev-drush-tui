@@ -48,6 +48,23 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 		app.SetFocus(cmdList.List)
 	}
 
+	// Wire the Run button: execute in a goroutine, show output.
+	params.onRun = func(command string, args []string, opts []string) {
+		go func() {
+			app.QueueUpdateDraw(func() {
+				output.ShowRunning("ddev drush " + command)
+			})
+			result, err := drush.Execute(command, args, opts)
+			app.QueueUpdateDraw(func() {
+				if err != nil {
+					output.ShowError(err)
+				} else {
+					output.ShowResult(result)
+				}
+			})
+		}()
+	}
+
 	// Top row: commands (60%) and params (40%)
 	panels := tview.NewFlex().
 		AddItem(cmdList, 0, 6, true).
@@ -55,7 +72,7 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 
 	// Grid: header, panels, output
 	grid := tview.NewGrid().
-		SetRows(1, -1, 5).
+		SetRows(1, -1, 10).
 		SetColumns(-1).
 		AddItem(header, 0, 0, 1, 1, 0, 0, false).
 		AddItem(panels, 1, 0, 1, 1, 0, 0, true).
@@ -75,7 +92,39 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 	app.SetRoot(grid, true)
 	app.SetFocus(cmdList)
 
-	// Global key handling: q quits from command list, Tab cycles focus, Esc returns to command list.
+	// isFormFocused returns true when any part of the params form has focus.
+	// tview may focus individual form items, not the form itself.
+	isFormFocused := func() bool {
+		focused := app.GetFocus()
+		if focused == params.form {
+			return true
+		}
+		// Check if focus is on a form item (input field, checkbox, button).
+		for i := 0; i < params.form.GetFormItemCount(); i++ {
+			if focused == params.form.GetFormItem(i) {
+				return true
+			}
+		}
+		for i := 0; i < params.form.GetButtonCount(); i++ {
+			if focused == params.form.GetButton(i) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Arrow keys navigate within the form (down = next field, up = prev field).
+	params.form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyDown:
+			return tcell.NewEventKey(tcell.KeyTab, 0, tcell.ModNone)
+		case tcell.KeyUp:
+			return tcell.NewEventKey(tcell.KeyBacktab, 0, tcell.ModNone)
+		}
+		return event
+	})
+
+	// Global key handling.
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyRune:
@@ -84,16 +133,19 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 				return nil
 			}
 		case tcell.KeyTab:
-			// Toggle focus between command list and params form.
-			focused := app.GetFocus()
-			if focused == cmdList.List {
+			// When command list is focused, Tab moves to the form.
+			// When form is focused, let Tab pass through to navigate fields.
+			if app.GetFocus() == cmdList.List {
 				app.SetFocus(params.form)
-			} else {
-				app.SetFocus(cmdList.List)
+				return nil
 			}
-			return nil
+			// Inside the form, let tview handle Tab (moves between fields).
+			return event
 		case tcell.KeyEscape:
-			// Esc always returns to command list.
+			// Esc returns to command list from anywhere.
+			if isFormFocused() {
+				params.ShowPlaceholder()
+			}
 			app.SetFocus(cmdList.List)
 			return nil
 		}
