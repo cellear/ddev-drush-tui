@@ -48,6 +48,22 @@ No spaces in filenames. Examples:
 - Open questions
 - Files created or modified
 - References to `DOC/` files and prior handoffs
+- **Next-assistant prompt** (see below)
+
+## Next-Assistant Prompt
+
+Every handoff MUST end with a section called `## Prompt for Next Assistant`. This is a ready-to-paste prompt the human can give to the next AI assistant to start their session. It should:
+
+1. State which sprint story to work on next (e.g., "You are working on S1-4")
+2. List the files to read first (AGENT.md, the sprint plan, relevant DOC/ files, the previous handoff)
+3. Summarize what's already done and what's expected
+4. Remind the assistant of key constraints (e.g., "read DOC/drush-discovery.md before implementing")
+5. Remind the assistant to sign commits with `Co-Authored-By`
+
+After writing the handoff file, **tell the human directly:**
+- The exact prompt to paste (in a code block)
+- Which assistant is scheduled to receive it (from the sprint plan's Owner field)
+- What story it covers
 
 ## Updating DOC Files
 
