@@ -226,7 +226,7 @@ clean:
 
 ## Decisions Made This Sprint
 
-*(Fill in as sprint progresses)*
+- **Demo scripts, not automated tests:** The `drupal-cms/acceptance-test*.sh` scripts are _demos_, not automated pass/fail tests. They run the program and display output for a human to review. The human decides whether the sprint's work is accepted. Future scripts should follow this pattern: show what to look for, run the program, let the human judge.
 
 ---
 

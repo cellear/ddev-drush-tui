@@ -267,6 +267,16 @@ Key directories:
 Agents must read recent HANDOFF/ files before starting work.
 Agents must write a handoff document before ending a session.
 
+**Commit attribution:** Every commit made by an AI assistant MUST include a `Co-Authored-By` trailer identifying the model. Examples:
+
+```
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Co-Authored-By: Codex <noreply@openai.com>
+Co-Authored-By: Gemini CLI <noreply@google.com>
+Co-Authored-By: Cursor Composer <noreply@cursor.com>
+```
+
 Sprint plans live in `SPRINTS/sprint-N.md` with user stories, acceptance criteria, and `[done]` tags.
 
 ---
