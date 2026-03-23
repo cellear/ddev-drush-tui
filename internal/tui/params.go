@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -95,15 +96,30 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 		arg := help.Arguments[name]
 		label := name
 		required := arg.IsRequired == "1"
-		if arg.IsRequired == "1" {
+		if required {
 			label = "* " + label
 		}
 		fieldName := name
-		pv.form.AddInputField(label, "", 0, nil, func(text string) {
-			if required && strings.TrimSpace(text) != "" {
-				pv.clearValidationErrorFor(fieldName)
+		choices := parseChoices(arg.Description)
+		if len(choices) > 0 {
+			pv.form.AddDropDown(label, choices, -1, func(text string, index int) {
+				if required && text != "" {
+					pv.clearValidationErrorFor(fieldName)
+				}
+			})
+		} else {
+			pv.form.AddInputField(label, "", 0, nil, func(text string) {
+				if required && strings.TrimSpace(text) != "" {
+					pv.clearValidationErrorFor(fieldName)
+				}
+			})
+			if desc := arg.Description; desc != "" {
+				item := pv.form.GetFormItem(pv.form.GetFormItemCount() - 1)
+				if input, ok := item.(*tview.InputField); ok {
+					input.SetPlaceholder(desc)
+				}
 			}
-		})
+		}
 	}
 
 	// Options, sorted by name.
@@ -111,15 +127,33 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 	for _, name := range optNames {
 		opt := help.Options[name]
 		if opt.AcceptValue == "0" {
-			// Boolean flag — render as checkbox.
 			pv.form.AddCheckbox(name, false, nil)
 		} else {
-			// Value option — render as input field with default if available.
-			defaultVal := ""
-			if len(opt.Defaults) > 0 {
-				defaultVal = opt.Defaults[0]
+			choices := parseChoices(opt.Description)
+			if len(choices) > 0 {
+				initial := -1
+				if len(opt.Defaults) > 0 {
+					for i, c := range choices {
+						if c == opt.Defaults[0] {
+							initial = i
+							break
+						}
+					}
+				}
+				pv.form.AddDropDown(name, choices, initial, nil)
+			} else {
+				defaultVal := ""
+				if len(opt.Defaults) > 0 {
+					defaultVal = opt.Defaults[0]
+				}
+				pv.form.AddInputField(name, defaultVal, 0, nil, nil)
+				if desc := opt.Description; desc != "" {
+					item := pv.form.GetFormItem(pv.form.GetFormItemCount() - 1)
+					if input, ok := item.(*tview.InputField); ok {
+						input.SetPlaceholder(desc)
+					}
+				}
 			}
-			pv.form.AddInputField(name, defaultVal, 0, nil, nil)
 		}
 	}
 
@@ -151,23 +185,13 @@ func (pv *ParamsView) collectValues() (args []string, opts []string) {
 		return
 	}
 
-	formIdx := 0
-
 	// Arguments come first in the form (same order as ShowParams).
 	argNames := sortedKeys(help.Arguments)
 	for _, name := range argNames {
-		item := pv.form.GetFormItemByLabel(name)
-		if item == nil {
-			// Try with required prefix.
-			item = pv.form.GetFormItemByLabel("* " + name)
+		val := pv.fieldValue(name)
+		if val != "" {
+			args = append(args, val)
 		}
-		if input, ok := item.(*tview.InputField); ok {
-			val := input.GetText()
-			if val != "" {
-				args = append(args, val)
-			}
-		}
-		formIdx++
 	}
 
 	// Options come after arguments.
@@ -175,22 +199,16 @@ func (pv *ParamsView) collectValues() (args []string, opts []string) {
 	for _, name := range optNames {
 		opt := help.Options[name]
 		if opt.AcceptValue == "0" {
-			// Boolean flag — checkbox.
 			item := pv.form.GetFormItemByLabel(name)
 			if cb, ok := item.(*tview.Checkbox); ok && cb.IsChecked() {
 				opts = append(opts, "--"+name)
 			}
 		} else {
-			// Value option — input field.
-			item := pv.form.GetFormItemByLabel(name)
-			if input, ok := item.(*tview.InputField); ok {
-				val := input.GetText()
-				if val != "" {
-					opts = append(opts, "--"+name+"="+val)
-				}
+			val := pv.fieldValue(name)
+			if val != "" {
+				opts = append(opts, "--"+name+"="+val)
 			}
 		}
-		formIdx++
 	}
 
 	return
@@ -206,13 +224,31 @@ func (pv *ParamsView) firstMissingRequiredArgument() string {
 		if arg.IsRequired != "1" {
 			continue
 		}
-		item := pv.form.GetFormItemByLabel("* " + name)
-		input, ok := item.(*tview.InputField)
-		if !ok || strings.TrimSpace(input.GetText()) == "" {
+		if strings.TrimSpace(pv.fieldValue(name)) == "" {
 			return name
 		}
 	}
 
+	return ""
+}
+
+// fieldValue returns the current text for a form field, checking both the plain
+// label and the "* " required prefix. Works for InputField and DropDown items.
+func (pv *ParamsView) fieldValue(name string) string {
+	item := pv.form.GetFormItemByLabel(name)
+	if item == nil {
+		item = pv.form.GetFormItemByLabel("* " + name)
+	}
+	if item == nil {
+		return ""
+	}
+	if input, ok := item.(*tview.InputField); ok {
+		return input.GetText()
+	}
+	if dd, ok := item.(*tview.DropDown); ok {
+		_, text := dd.GetCurrentOption()
+		return text
+	}
 	return ""
 }
 
@@ -233,7 +269,6 @@ func (pv *ParamsView) clearValidationErrorFor(fieldName string) {
 }
 
 // sortedKeys returns the keys of a map sorted alphabetically.
-// Works for both Argument and Option maps via a generic-free approach.
 func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -241,4 +276,34 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// choicesPattern matches description text like "Choices: foo, bar." or
+// "Available formats: csv,json,list" or "recognized values: a, b, c".
+var choicesPattern = regexp.MustCompile(
+	`(?i)(?:choices|available\s+\w+|recognized\s+values):\s*([^.]+)`,
+)
+
+// parseChoices extracts a list of valid values from a description string.
+// Returns nil when no recognizable choices pattern is found.
+func parseChoices(desc string) []string {
+	m := choicesPattern.FindStringSubmatch(desc)
+	if m == nil {
+		return nil
+	}
+	raw := m[1]
+	// Normalize " or " and ", " separators to comma.
+	raw = strings.ReplaceAll(raw, " or ", ",")
+	parts := strings.Split(raw, ",")
+	var choices []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			choices = append(choices, p)
+		}
+	}
+	if len(choices) < 2 {
+		return nil
+	}
+	return choices
 }
