@@ -45,6 +45,8 @@ Sprint 4 is complete and accepted for user testing. All five stories were implem
 - `internal/tui/params.go` — validation, descriptions, dropdowns
 - `scripts/demo-s4.sh` — demo script
 - `SPRINTS/sprint-4.md` — acceptance record
+- `README.md` — added with screenshot, usage guide, keyboard reference, build instructions
+- `DOC/ddev-drush-yui-interface.jpg` — screenshot used in README
 
 ---
 
