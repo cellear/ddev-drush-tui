@@ -15,6 +15,7 @@ type ParamsView struct {
 	// layout holds the header text and the form in a vertical flex.
 	layout *tview.Flex
 	header *tview.TextView
+	error  *tview.TextView
 	form   *tview.Form
 
 	// onCancel is called when the user presses Cancel or Esc.
@@ -24,6 +25,7 @@ type ParamsView struct {
 
 	// currentHelp tracks which command is displayed so we can read form values.
 	currentHelp *drush.CommandHelp
+	lastError   string
 }
 
 // NewParamsView creates the params pane with placeholder text.
@@ -31,11 +33,15 @@ func NewParamsView(onCancel func()) *ParamsView {
 	header := tview.NewTextView()
 	header.SetDynamicColors(true)
 
+	errorView := tview.NewTextView()
+	errorView.SetDynamicColors(true)
+
 	form := tview.NewForm()
 	form.SetBorder(false)
 
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 3, 0, false).
+		AddItem(errorView, 1, 0, false).
 		AddItem(form, 0, 1, true)
 	layout.SetBorder(true)
 	layout.SetTitle("Parameters")
@@ -43,6 +49,7 @@ func NewParamsView(onCancel func()) *ParamsView {
 	pv := &ParamsView{
 		layout:   layout,
 		header:   header,
+		error:    errorView,
 		form:     form,
 		onCancel: onCancel,
 	}
@@ -53,12 +60,16 @@ func NewParamsView(onCancel func()) *ParamsView {
 
 // ShowPlaceholder resets the pane to its initial state.
 func (pv *ParamsView) ShowPlaceholder() {
+	pv.clearValidationError()
+	pv.currentHelp = nil
 	pv.header.SetText("\n  Select a command to see its parameters.")
 	pv.form.Clear(true)
 }
 
 // ShowError displays an error message in the pane.
 func (pv *ParamsView) ShowError(err error) {
+	pv.clearValidationError()
+	pv.currentHelp = nil
 	pv.header.SetText(fmt.Sprintf("\n  [red]Error: %s[-]", err.Error()))
 	pv.form.Clear(true)
 }
@@ -73,6 +84,7 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 		aliasText = fmt.Sprintf("\n  Aliases: %s", strings.Join(help.Aliases, ", "))
 	}
 	pv.header.SetText(fmt.Sprintf("  [yellow]%s[-]  %s%s", help.Name, help.Description, aliasText))
+	pv.clearValidationError()
 
 	// Rebuild the form.
 	pv.form.Clear(true)
@@ -82,10 +94,16 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 	for _, name := range argNames {
 		arg := help.Arguments[name]
 		label := name
+		required := arg.IsRequired == "1"
 		if arg.IsRequired == "1" {
 			label = "* " + label
 		}
-		pv.form.AddInputField(label, "", 0, nil, nil)
+		fieldName := name
+		pv.form.AddInputField(label, "", 0, nil, func(text string) {
+			if required && strings.TrimSpace(text) != "" {
+				pv.clearValidationErrorFor(fieldName)
+			}
+		})
 	}
 
 	// Options, sorted by name.
@@ -110,6 +128,11 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 		if pv.onRun == nil || pv.currentHelp == nil {
 			return
 		}
+		if missing := pv.firstMissingRequiredArgument(); missing != "" {
+			pv.showValidationError("Required: " + missing)
+			return
+		}
+		pv.clearValidationError()
 		args, opts := pv.collectValues()
 		pv.onRun(pv.currentHelp.Name, args, opts)
 	})
@@ -171,6 +194,42 @@ func (pv *ParamsView) collectValues() (args []string, opts []string) {
 	}
 
 	return
+}
+
+func (pv *ParamsView) firstMissingRequiredArgument() string {
+	if pv.currentHelp == nil {
+		return ""
+	}
+
+	for _, name := range sortedKeys(pv.currentHelp.Arguments) {
+		arg := pv.currentHelp.Arguments[name]
+		if arg.IsRequired != "1" {
+			continue
+		}
+		item := pv.form.GetFormItemByLabel("* " + name)
+		input, ok := item.(*tview.InputField)
+		if !ok || strings.TrimSpace(input.GetText()) == "" {
+			return name
+		}
+	}
+
+	return ""
+}
+
+func (pv *ParamsView) showValidationError(message string) {
+	pv.lastError = message
+	pv.error.SetText("  [red]" + message + "[-]")
+}
+
+func (pv *ParamsView) clearValidationError() {
+	pv.lastError = ""
+	pv.error.SetText("")
+}
+
+func (pv *ParamsView) clearValidationErrorFor(fieldName string) {
+	if pv.lastError == "Required: "+fieldName {
+		pv.clearValidationError()
+	}
 }
 
 // sortedKeys returns the keys of a map sorted alphabetically.

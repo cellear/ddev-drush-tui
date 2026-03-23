@@ -47,7 +47,7 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 
 	params.onCancel = func() {
 		output.SetFocused(false)
-		app.SetFocus(cmdList.List)
+		app.SetFocus(cmdList.ListPrimitive())
 	}
 
 	// Wire the Run button: execute in a goroutine, show output.
@@ -92,7 +92,7 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 	}
 
 	app.SetRoot(grid, true)
-	app.SetFocus(cmdList.List)
+	app.SetFocus(cmdList.ListPrimitive())
 
 	// isFormFocused returns true when any part of the params form has focus.
 	// tview may focus individual form items, not the form itself.
@@ -117,7 +117,11 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 
 	isCommandListFocused := func() bool {
 		f := app.GetFocus()
-		return f == cmdList.List || f == cmdList
+		return f == cmdList.ListPrimitive() || f == cmdList
+	}
+
+	isFilterFocused := func() bool {
+		return cmdList.IsFilterFocused(app.GetFocus())
 	}
 
 	isOutputFocused := func() bool {
@@ -145,6 +149,11 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyRune:
+			if event.Rune() == '/' && isCommandListFocused() {
+				cmdList.ShowFilter()
+				app.SetFocus(cmdList.FilterPrimitive())
+				return nil
+			}
 			if event.Rune() == 'q' && isCommandListFocused() {
 				app.Stop()
 				return nil
@@ -161,20 +170,25 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 			}
 			if isOutputFocused() {
 				output.SetFocused(false)
-				app.SetFocus(cmdList.List)
+				app.SetFocus(cmdList.ListPrimitive())
 				return nil
 			}
 			return event
 		case tcell.KeyEscape:
+			if isFilterFocused() {
+				cmdList.HideFilter()
+				app.SetFocus(cmdList.ListPrimitive())
+				return nil
+			}
 			if isFormFocused() {
 				params.ShowPlaceholder()
 				output.SetFocused(false)
-				app.SetFocus(cmdList.List)
+				app.SetFocus(cmdList.ListPrimitive())
 				return nil
 			}
 			if isOutputFocused() {
 				output.SetFocused(false)
-				app.SetFocus(cmdList.List)
+				app.SetFocus(cmdList.ListPrimitive())
 				return nil
 			}
 			if isCommandListFocused() {
