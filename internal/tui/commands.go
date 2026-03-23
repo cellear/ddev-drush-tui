@@ -1,102 +1,125 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/cellear/ddev-drush-tui/internal/drush"
 	"github.com/rivo/tview"
 )
 
-// CommandList is a tview.List showing Drush commands grouped by namespace.
-// Namespace headers are styled and non-selectable (arrow keys skip over them).
+const (
+	cmdLevelNamespaces = 1
+	cmdLevelCommands   = 2
+)
+
+// CommandList is a tview.List with two-level navigation: namespaces (with
+// counts) then commands within a namespace. Enter drills in; ← Back, Esc, or
+// Enter on Back returns to the namespace list.
 type CommandList struct {
 	*tview.List
-	headerIndices map[int]bool      // indices that are namespace headers
-	commandsByIdx []*drush.Command  // command at each index (nil for headers)
-	onSelect      func(cmd *drush.Command)
+	groups           []drush.NamespaceGroup
+	level            int
+	currentNamespace string
+	onSelect         func(cmd *drush.Command)
 }
 
-// NewCommandList builds a list from namespace groups.
-// Namespace headers use [yellow]namespace[-] styling and are skipped during navigation.
-// onSelect is called when the user selects a command (Enter); nil is safe.
+// NewCommandList builds a namespace-first list. onSelect is called when the
+// user chooses a command at level 2; nil is safe.
 func NewCommandList(groups []drush.NamespaceGroup, onSelect func(cmd *drush.Command)) *CommandList {
 	list := tview.NewList()
 	list.SetBorder(true)
-	list.SetTitle("Commands")
 	list.SetUseStyleTags(true, false)
 
-	headerIndices := make(map[int]bool)
-	commandsByIdx := make([]*drush.Command, 0)
-	idx := 0
-
-	for _, g := range groups {
-		// Add namespace header: styled, non-selectable
-		headerText := "[yellow]" + g.Namespace + "[-]"
-		list.AddItem(headerText, "", 0, nil)
-		headerIndices[idx] = true
-		commandsByIdx = append(commandsByIdx, nil)
-		idx++
-
-		for i := range g.Commands {
-			cmd := &g.Commands[i]
-			list.AddItem(cmd.Name, "", 0, nil)
-			commandsByIdx = append(commandsByIdx, cmd)
-			idx++
-		}
-	}
-
 	cl := &CommandList{
-		List:          list,
-		headerIndices: headerIndices,
-		commandsByIdx: commandsByIdx,
-		onSelect:      onSelect,
+		List:     list,
+		groups:   groups,
+		level:    cmdLevelNamespaces,
+		onSelect: onSelect,
 	}
-
-	// When selection changes, skip over headers (move to next/prev command)
-	list.SetChangedFunc(cl.handleChanged)
+	cl.showNamespaces()
 	list.SetSelectedFunc(cl.handleSelected)
-
 	return cl
 }
 
-// handleChanged runs when the user navigates. If they land on a header, move to nearest command.
-func (cl *CommandList) handleChanged(index int, mainText, secondaryText string, shortcut rune) {
-	if !cl.headerIndices[index] {
-		return
+func (cl *CommandList) showNamespaces() {
+	cl.level = cmdLevelNamespaces
+	cl.currentNamespace = ""
+	cl.Clear()
+	cl.SetTitle("Commands")
+	for _, g := range cl.groups {
+		label := fmt.Sprintf("%s  (%d)", g.Namespace, len(g.Commands))
+		cl.AddItem(label, "", 0, nil)
 	}
-	// Landed on a header — find next command (prefer down, else up)
-	next := cl.findNextCommand(index, 1)
-	if next < 0 {
-		next = cl.findNextCommand(index, -1)
-	}
-	if next >= 0 {
-		cl.SetCurrentItem(next)
+	if cl.GetItemCount() > 0 {
+		cl.SetCurrentItem(0)
 	}
 }
 
-func (cl *CommandList) findNextCommand(from, direction int) int {
-	for i := from + direction; i >= 0 && i < cl.GetItemCount(); i += direction {
-		if !cl.headerIndices[i] {
-			return i
+func (cl *CommandList) showCommands(namespace string) {
+	cl.level = cmdLevelCommands
+	cl.currentNamespace = namespace
+	cl.Clear()
+	cl.SetTitle("Commands > " + namespace)
+	cl.AddItem("[yellow]← Back[-]", "", 0, nil)
+
+	var cmds []drush.Command
+	for i := range cl.groups {
+		if cl.groups[i].Namespace == namespace {
+			cmds = cl.groups[i].Commands
+			break
 		}
 	}
-	return -1
+	for i := range cmds {
+		c := cmds[i]
+		cl.AddItem(c.Name, "", 0, nil)
+	}
+	if cl.GetItemCount() > 0 {
+		cl.SetCurrentItem(0)
+	}
 }
 
-// handleSelected runs when the user presses Enter. Ignore headers; call onSelect for commands.
 func (cl *CommandList) handleSelected(index int, mainText, secondaryText string, shortcut rune) {
-	if cl.headerIndices[index] || cl.onSelect == nil {
+	if cl.level == cmdLevelNamespaces {
+		if index < 0 || index >= len(cl.groups) {
+			return
+		}
+		cl.showCommands(cl.groups[index].Namespace)
 		return
 	}
-	// Find the Command for this index
-	cmd := cl.commandAt(index)
-	if cmd != nil {
+	if index == 0 {
+		cl.showNamespaces()
+		return
+	}
+	cmd := cl.commandAtLevel2(index)
+	if cmd != nil && cl.onSelect != nil {
 		cl.onSelect(cmd)
 	}
 }
 
-// commandAt returns the Command at the given list index, or nil if it's a header.
-func (cl *CommandList) commandAt(index int) *drush.Command {
-	if index < 0 || index >= len(cl.commandsByIdx) {
+func (cl *CommandList) commandAtLevel2(index int) *drush.Command {
+	if index <= 0 {
 		return nil
 	}
-	return cl.commandsByIdx[index]
+	cmdIdx := index - 1
+	for i := range cl.groups {
+		if cl.groups[i].Namespace != cl.currentNamespace {
+			continue
+		}
+		g := &cl.groups[i]
+		if cmdIdx < len(g.Commands) {
+			return &g.Commands[cmdIdx]
+		}
+		break
+	}
+	return nil
+}
+
+// BackToNamespaces moves from level 2 to level 1. It returns true if the list
+// was at level 2 and was updated.
+func (cl *CommandList) BackToNamespaces() bool {
+	if cl.level != cmdLevelCommands {
+		return false
+	}
+	cl.showNamespaces()
+	return true
 }

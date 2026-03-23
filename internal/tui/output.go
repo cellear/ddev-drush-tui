@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cellear/ddev-drush-tui/internal/drush"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -20,7 +21,34 @@ func NewOutputView() *OutputView {
 	tv.SetText("Output will appear here after running a command.")
 	tv.SetDynamicColors(true)
 	tv.SetScrollable(true)
-	return &OutputView{TextView: tv}
+
+	ov := &OutputView{TextView: tv}
+
+	// less-style extras: Space / Page Down = page down; b / Page Up = page up.
+	// Arrow keys, Home/End, g/G are handled by tview.TextView.
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case ' ':
+				return tcell.NewEventKey(tcell.KeyPgDn, 0, tcell.ModNone)
+			case 'b':
+				return tcell.NewEventKey(tcell.KeyPgUp, 0, tcell.ModNone)
+			}
+		}
+		return event
+	})
+
+	return ov
+}
+
+// SetFocused updates the border color so the user can see when this pane has focus.
+func (ov *OutputView) SetFocused(focused bool) {
+	if focused {
+		ov.SetBorderColor(tcell.ColorYellow)
+	} else {
+		ov.SetBorderColor(tview.Styles.BorderColor)
+	}
 }
 
 // ShowRunning displays a "running..." message while a command executes.

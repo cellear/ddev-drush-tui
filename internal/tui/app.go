@@ -41,10 +41,12 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 			return
 		}
 		params.ShowParams(help)
+		output.SetFocused(false)
 		app.SetFocus(params.form)
 	})
 
 	params.onCancel = func() {
+		output.SetFocused(false)
 		app.SetFocus(cmdList.List)
 	}
 
@@ -70,13 +72,13 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 		AddItem(cmdList, 0, 6, true).
 		AddItem(params.layout, 0, 4, false)
 
-	// Grid: header, panels, output
+	// Grid: header, panels, output (output row is focusable for Tab + scrolling)
 	grid := tview.NewGrid().
 		SetRows(1, -1, 10).
 		SetColumns(-1).
 		AddItem(header, 0, 0, 1, 1, 0, 0, false).
 		AddItem(panels, 1, 0, 1, 1, 0, 0, true).
-		AddItem(output, 2, 0, 1, 1, 0, 0, false)
+		AddItem(output, 2, 0, 1, 1, 0, 0, true)
 
 	a := &App{
 		app:      app,
@@ -90,7 +92,7 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 	}
 
 	app.SetRoot(grid, true)
-	app.SetFocus(cmdList)
+	app.SetFocus(cmdList.List)
 
 	// isFormFocused returns true when any part of the params form has focus.
 	// tview may focus individual form items, not the form itself.
@@ -113,6 +115,16 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 		return false
 	}
 
+	isCommandListFocused := func() bool {
+		f := app.GetFocus()
+		return f == cmdList.List || f == cmdList
+	}
+
+	isOutputFocused := func() bool {
+		f := app.GetFocus()
+		return f == output || f == output.TextView
+	}
+
 	// Arrow keys navigate within the form (down = next field, up = prev field).
 	params.form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -120,6 +132,11 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 			return tcell.NewEventKey(tcell.KeyTab, 0, tcell.ModNone)
 		case tcell.KeyUp:
 			return tcell.NewEventKey(tcell.KeyBacktab, 0, tcell.ModNone)
+		case tcell.KeyTab:
+			// Tab cycles to the output pane; use arrows to move between fields.
+			output.SetFocused(true)
+			app.SetFocus(output)
+			return nil
 		}
 		return event
 	})
@@ -128,26 +145,43 @@ func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyRune:
-			if event.Rune() == 'q' && app.GetFocus() == cmdList.List {
+			if event.Rune() == 'q' && isCommandListFocused() {
 				app.Stop()
 				return nil
 			}
 		case tcell.KeyTab:
-			// When command list is focused, Tab moves to the form.
-			// When form is focused, let Tab pass through to navigate fields.
-			if app.GetFocus() == cmdList.List {
+			if isCommandListFocused() {
+				output.SetFocused(false)
 				app.SetFocus(params.form)
 				return nil
 			}
-			// Inside the form, let tview handle Tab (moves between fields).
+			if isFormFocused() {
+				// Handled by form capture when focus is inside the form.
+				return event
+			}
+			if isOutputFocused() {
+				output.SetFocused(false)
+				app.SetFocus(cmdList.List)
+				return nil
+			}
 			return event
 		case tcell.KeyEscape:
-			// Esc returns to command list from anywhere.
 			if isFormFocused() {
 				params.ShowPlaceholder()
+				output.SetFocused(false)
+				app.SetFocus(cmdList.List)
+				return nil
 			}
-			app.SetFocus(cmdList.List)
-			return nil
+			if isOutputFocused() {
+				output.SetFocused(false)
+				app.SetFocus(cmdList.List)
+				return nil
+			}
+			if isCommandListFocused() {
+				cmdList.BackToNamespaces()
+				return nil
+			}
+			return event
 		}
 		return event
 	})
