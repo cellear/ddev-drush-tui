@@ -23,6 +23,9 @@ type App struct {
 func NewApp(ctx *ddev.Context, commands []drush.NamespaceGroup) *App {
 	app := tview.NewApplication()
 
+	// Fix default placeholder contrast: navy-on-blue is unreadable.
+	tview.Styles.ContrastSecondaryTextColor = tcell.ColorLightGray
+
 	header := tview.NewTextView()
 	header.SetDynamicColors(false)
 	header.SetText(" ddev-drush-tui | project: " + ctx.ProjectName)

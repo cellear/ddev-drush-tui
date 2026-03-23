@@ -163,10 +163,16 @@ func (pv *ParamsView) ShowParams(help *drush.CommandHelp) {
 			return
 		}
 		if missing := pv.firstMissingRequiredArgument(); missing != "" {
-			pv.showValidationError("Required: " + missing)
-			return
+			if pv.lastError != "" {
+				// Second press with warning visible — override and run anyway.
+				pv.clearValidationError()
+			} else {
+				pv.showValidationError("Required: " + missing + "  (Run again to skip)")
+				return
+			}
+		} else {
+			pv.clearValidationError()
 		}
-		pv.clearValidationError()
 		args, opts := pv.collectValues()
 		pv.onRun(pv.currentHelp.Name, args, opts)
 	})
